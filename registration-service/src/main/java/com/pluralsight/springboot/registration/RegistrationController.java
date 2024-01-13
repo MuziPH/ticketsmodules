@@ -1,6 +1,7 @@
 package com.pluralsight.springboot.registration;
 
 import com.pluralsight.springboot.events.Event;
+import com.pluralsight.springboot.events.EventsClient;
 import com.pluralsight.springboot.events.Product;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -13,31 +14,20 @@ import java.util.UUID;
 @RestController
 @RequestMapping(path = "/registrations")
 public class RegistrationController {
+    private final EventsClient eventsClient;
     private final RegistrationRepository registrationRepository;
-    private final WebClient webClient;
 
-    public RegistrationController(RegistrationRepository registrationRepository, WebClient webClient) {
+    public RegistrationController(RegistrationRepository registrationRepository, EventsClient eventsClient) {
+        this.eventsClient = eventsClient;
         this.registrationRepository = registrationRepository;
-        this.webClient = webClient;
     }
 
     @PostMapping
     public Registration create(@RequestBody Registration registration) {
-        // Call the event service to get the product and event dat
-        Product product = webClient
-                .get()
-                .uri("/products/{id}", registration.productId())
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .retrieve()
-                .bodyToMono(Product.class)
-                .block();
-        Event event = webClient
-                .get()
-                .uri("/events/{id}", product.eventId())
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .retrieve()
-                .bodyToMono(Event.class)
-                .block();
+        // Call the event service to get the product and event data
+        Product product = eventsClient.getProductById(registration.productId());
+        Event event = eventsClient.getEventById(product.eventId());
+
         // Generate the ticket code
         String ticketCode = UUID.randomUUID().toString();
 
